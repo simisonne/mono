@@ -1,0 +1,68 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\Icons\mono.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <Target Name="ClearCache" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Delete Files="$(APPDATA)\mono\library.db" ContinueOnError="true" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.72" />
+    <PackageReference Include="MahApps.Metro.IconPacks.Lucide" Version="6.2.1" />
+    <PackageReference Include="ManagedBass" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+    <PackageReference Include="OpenTK" Version="3.3.1">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+    <PackageReference Include="OpenTK.GLWpfControl" Version="3.3.0">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="bass.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\Binaries\fpcalc.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Assets\Scripts\analyze.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Assets\Scripts\analyze_bpm.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Assets\Scripts\analyze_key.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Assets\Scripts\setup_venv.bat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Remove="Assets\Scripts\venv\**" />
+    <Content Remove="Assets\Scripts\venv\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\Inter-VariableFont_opsz,wght.ttf" />
+    <Resource Include="Assets\Fonts\Inter-Italic-VariableFont_opsz,wght.ttf" />
+    <Resource Include="Assets\Fonts\DMSans-VariableFont_opsz,wght.ttf" />
+    <Resource Include="Assets\Fonts\DMSans-Italic-VariableFont_opsz,wght.ttf" />
+    <Resource Include="Assets\Icons\mono.ico" />
+    <Content Include="Assets\Icons\mono.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Icons\mono2.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

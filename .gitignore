@@ -1,0 +1,20 @@
+# .NET build output
+bin/
+obj/
+
+# Visual Studio / Rider
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+.idea/
+
+# Python venv
+Assets/Scripts/venv/
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store

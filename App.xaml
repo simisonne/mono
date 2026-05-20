@@ -1,0 +1,30 @@
+﻿<Application x:Class="mono.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:mono"
+             xmlns:vm="clr-namespace:mono.ViewModels"
+             xmlns:conv="clr-namespace:mono.Converters"
+             >
+    <Application.Resources>
+        <SolidColorBrush x:Key="Background" Color="#f2f2f2"/>
+        <SolidColorBrush x:Key="Surface" Color="#ffffff"/>
+        <SolidColorBrush x:Key="SurfaceAlt" Color="#e4e4e4"/>
+        <SolidColorBrush x:Key="Border" Color="#cccccc"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#1c1c1c"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#666666"/>
+        <SolidColorBrush x:Key="Accent" Color="#7c3aed"/>
+        <SolidColorBrush x:Key="WaveformUnplayed" Color="#c8c8c8"/>
+        <SolidColorBrush x:Key="WaveformPlayed" Color="#7c3aed"/>
+        <SolidColorBrush x:Key="Needle" Color="#1c1c1c"/>
+
+        <conv:PositionToOffsetConverter x:Key="PositionToOffsetConverter"/>
+        <conv:ItemIndexConverter x:Key="ItemIndexConverter"/>
+        <conv:TitleDisplayConverter x:Key="TitleDisplayConverter"/>
+        <conv:SampleRateConverter x:Key="SampleRateConverter"/>
+        <conv:FormatBadgeConverter x:Key="FormatBadgeConverter"/>
+        <conv:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+
+        <FontFamily x:Key="FontInter">pack://application:,,,/Assets/Fonts/#Inter</FontFamily>
+        <FontFamily x:Key="FontDMSans">pack://application:,,,/Assets/Fonts/#DM Sans</FontFamily>
+    </Application.Resources>
+</Application>
