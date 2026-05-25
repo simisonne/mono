@@ -93,6 +93,8 @@ public sealed class AudioService : IDisposable
         if (_handle == 0) return;
         Bass.ChannelStop(_handle);
         Bass.ChannelSetPosition(_handle, 0, PositionFlags.Bytes);
+        Bass.StreamFree(_handle);
+        _handle = 0;
         IsPlaying = false;
         CurrentPosition = 0;
         Elapsed = TimeSpan.Zero;

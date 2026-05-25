@@ -29,7 +29,6 @@ public class AnalysisService
     {
         _db = db;
         _sidecar = new PythonSidecarService();
-        _ = _sidecar.EnsureVenvAsync();
     }
 
     public void Analyze(string filePath)

@@ -11,8 +11,15 @@ obj/
 *.rsuser
 .idea/
 
-# Python venv
+# Python
 Assets/Scripts/venv/
+Assets/Binaries/analyze_bpm.exe
+Assets/Binaries/analyze_key.exe
+build/
+*.spec
+
+
+build_release.bat
 
 # OS junk
 Thumbs.db

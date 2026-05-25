@@ -126,6 +126,17 @@ public partial class App : Application
                             FlashWindowEx(ref info);
                         }
                         ViewModel?.OpenSingleFile(path);
+
+                        var win = Application.Current.MainWindow;
+                        if (win != null)
+                        {
+                            if (win.WindowState == WindowState.Minimized)
+                                win.WindowState = WindowState.Normal;
+                            win.Activate();
+                            win.Topmost = true;
+                            win.Topmost = false;
+                            win.Focus();
+                        }
                     });
                 }
             }
