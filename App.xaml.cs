@@ -126,17 +126,18 @@ public partial class App : Application
                             FlashWindowEx(ref info);
                         }
                         ViewModel?.OpenSingleFile(path);
+                    });
 
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
                         var win = Application.Current.MainWindow;
-                        if (win != null)
-                        {
-                            if (win.WindowState == WindowState.Minimized)
-                                win.WindowState = WindowState.Normal;
-                            win.Activate();
-                            win.Topmost = true;
-                            win.Topmost = false;
-                            win.Focus();
-                        }
+                        if (win == null) return;
+                        if (win.WindowState == WindowState.Minimized)
+                            win.WindowState = WindowState.Normal;
+                        win.Activate();
+                        win.Topmost = true;
+                        win.Topmost = false;
+                        win.Focus();
                     });
                 }
             }

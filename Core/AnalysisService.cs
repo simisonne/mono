@@ -18,7 +18,7 @@ public class AnalysisService
     private double? _partialLufs;
 
     private static readonly string LogPath = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "mono_debug.log");
+        @"C:\Users\Maild\Documents\Coding\mono media player\test", "mono_debug.log");
 
     private static void Log(string msg) =>
         File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
