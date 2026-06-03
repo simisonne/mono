@@ -12,6 +12,7 @@
         ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
         AllowDrop="True"
+        PreviewKeyDown="Window_PreviewKeyDown"
         Drop="Window_Drop"
         DragOver="Window_DragOver"
         Margin="0" Padding="0">

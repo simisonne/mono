@@ -183,6 +183,19 @@ public partial class MainWindow : Window
                 : Visibility.Visible;
     }
 
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            var vm = DataContext as ViewModels.MainViewModel;
+            if (vm?.PlayPauseCommand?.CanExecute(null) == true)
+            {
+                vm.PlayPauseCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+    }
+
     private void OnQueueChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         int count = App.ViewModel.Queue.Count;
