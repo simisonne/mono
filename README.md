@@ -9,12 +9,11 @@ Lightweight WPF audio player for music producers. Displays a real-time waveform 
 ## Features
 
 - **Waveform display** — 1800-peak resolution, rendered via SkiaSharp; click anywhere to seek
-- **Automatic analysis** — BPM (madmom DBN beat tracker), musical key (librosa chroma_cens + Krumhansl-Schmuckler), and LUFS (ffmpeg ebur128) run in parallel with incremental results
+- **Automatic analysis** — BPM (essentia), musical key (essentia), and LUFS (ffmpeg ebur128) run in parallel with incremental results
 - **Playlist** — drag-to-reorder, context menu (play / remove / show in folder), seamless auto-advance
 - **Cover art** — embedded artwork extracted from tags via TagLibSharp; layout adapts when no art is present
 - **Persistent cache** — acoustic fingerprint deduplication (Chromaprint) with SQLite storage; analysis results, play counts, and volume persist across sessions and survive file moves
 - **Single-instance** — named Mutex + named pipe IPC; a second launch forwards its file path to the running instance and activates the window
-- **File associations** — custom icons registered for `.wav`, `.mp3`, `.flac` on first run
 - **Drag-and-drop** — drop files onto the window to add them to the playlist
 - **Supported formats** — MP3, WAV, FLAC
 - **Borderless chrome** — custom title bar, fixed-height layout, minimalist design
@@ -32,8 +31,6 @@ Extract the zip and run `mono.exe`. No installer required.
 - Windows 10/11 x64
 - [ffmpeg](https://ffmpeg.org/download.html) on system PATH — required for LUFS loudness analysis
 
-> BPM and key analysis use bundled PyInstaller-frozen executables. No Python installation is required on the end-user machine.
-
 ---
 
 ## Building from source
@@ -45,14 +42,6 @@ dotnet build
 ```
 
 **Prerequisites:** .NET 8 SDK, Windows 10/11 x64
-
-To rebuild the Python sidecar executables from source (optional — frozen binaries are included in `Assets/Binaries/`):
-
-```
-Assets\Scripts\setup_venv.bat
-```
-
-This creates a Python 3.9 virtual environment with the required packages (librosa, madmom, numpy). Requires Python 3.9 installed locally.
 
 ---
 
@@ -79,8 +68,8 @@ This creates a Python 3.9 virtual environment with the required packages (libros
 | Metadata | TagLibSharp |
 | Database | SQLite via Dapper |
 | Icons | MahApps.Metro.IconPacks.Lucide |
-| BPM analysis | Python sidecar — madmom DBN beat tracker |
-| Key analysis | Python sidecar — librosa chroma_cens + Krumhansl-Schmuckler |
+| BPM analysis | essentia |
+| Key analysis | essentia |
 | LUFS measurement | ffmpeg ebur128 filter |
 | Fingerprinting | fpcalc (Chromaprint) |
 
@@ -95,7 +84,7 @@ MVVM three-tier layout:
 Views            MainWindow.xaml, WaveformView.xaml, PlaylistDock.xaml
 ViewModels       MainViewModel, WaveformViewModel
 Services         AudioService, WaveformService, AnalysisService,
-                 PythonSidecarService, LufsService, FingerprintService,
+                 LufsService, FingerprintService,
                  LibraryDb, PlaylistQueue, FileIconRegistryService
 Models           TrackItem
 Database         SQLite — %APPDATA%\mono\library.db
@@ -124,7 +113,6 @@ Core/
   AudioService.cs             ManagedBass playback engine
   WaveformService.cs          Decode-stream peak extraction (1800 buckets)
   AnalysisService.cs          Orchestrates BPM + key + LUFS in parallel
-  PythonSidecarService.cs     Runs frozen Python analyzers as child processes
   LufsService.cs              ffmpeg ebur128 wrapper
   FingerprintService.cs       Chromaprint fpcalc wrapper
   LibraryDb.cs                SQLite persistence (Dapper) — schema migration,
