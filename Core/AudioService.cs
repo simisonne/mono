@@ -53,7 +53,13 @@ public sealed class AudioService : IDisposable
             Log("Load aborted — not initialized");
             return false;
         }
-        Stop();
+        if (_handle != 0)
+        {
+            _timer.Stop();
+            IsPlaying = false;
+            Bass.StreamFree(_handle);
+            _handle = 0;
+        }
         _handle = Bass.CreateStream(path);
         Log($"CreateStream handle: {_handle}, Error: {Bass.LastError}");
         if (_handle == 0)
@@ -93,8 +99,6 @@ public sealed class AudioService : IDisposable
         if (_handle == 0) return;
         Bass.ChannelStop(_handle);
         Bass.ChannelSetPosition(_handle, 0, PositionFlags.Bytes);
-        Bass.StreamFree(_handle);
-        _handle = 0;
         IsPlaying = false;
         CurrentPosition = 0;
         Elapsed = TimeSpan.Zero;
