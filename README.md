@@ -1,6 +1,6 @@
 # mono
 
-Lightweight WPF audio player for music producers. Displays a real-time waveform alongside technical metadata — BPM, musical key, and LUFS loudness — with a drag-to-reorder playlist and cover art extraction.
+Lightweight WPF audio player for music producers. Displays a real-time waveform alongside technical metadata: BPM, musical key, and LUFS loudness. With drag-to-reorder playlist and cover art extraction.
 
 ![mono screenshot](https://github.com/user-attachments/assets/9b9cec5a-29ca-4704-8a87-d1eb27e93560)
 
