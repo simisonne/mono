@@ -7,7 +7,6 @@ namespace mono.Core;
 public class AnalysisService
 {
     private readonly FingerprintService _fp = new();
-    private readonly PythonSidecarService _sidecar;
     private readonly LufsService _lufs = new();
     private readonly LibraryDb _db;
 
@@ -28,7 +27,6 @@ public class AnalysisService
     public AnalysisService(LibraryDb db)
     {
         _db = db;
-        _sidecar = new PythonSidecarService();
     }
 
     public void Analyze(string filePath)
@@ -71,34 +69,20 @@ public class AnalysisService
             _partialKey = null;
             _partialLufs = null;
 
-            var bpmTask = _sidecar.GetBpmAsync(filePath, ct);
-            var keyTask = _sidecar.GetKeyAsync(filePath, ct);
-            var lufsTask = _lufs.MeasureLufsAsync(filePath, ct);
+            var oracleTask = NodeAnalysisService.GetAnalysisAsync(filePath, ct);
+            var lufsTask   = _lufs.MeasureLufsAsync(filePath, ct);
 
-            _ = bpmTask.ContinueWith(t =>
+            _ = oracleTask.ContinueWith(t =>
             {
                 if (ct.IsCancellationRequested || t.IsFaulted) return;
-                _partialBpm = t.Result;
+                _partialBpm = t.Result.Bpm;
+                _partialKey = t.Result.Key;
                 Application.Current?.Dispatcher.InvokeAsync(() =>
                     AnalysisComplete?.Invoke(new AnalysisResult
                     {
-                        Bpm      = _partialBpm  ?? 0,
-                        Key      = _partialKey  ?? "",
-                        Lufs     = _partialLufs ?? 0,
-                        FromCache = false
-                    }));
-            }, TaskContinuationOptions.OnlyOnRanToCompletion);
-
-            _ = keyTask.ContinueWith(t =>
-            {
-                if (ct.IsCancellationRequested || t.IsFaulted) return;
-                _partialKey = t.Result;
-                Application.Current?.Dispatcher.InvokeAsync(() =>
-                    AnalysisComplete?.Invoke(new AnalysisResult
-                    {
-                        Bpm      = _partialBpm  ?? 0,
-                        Key      = _partialKey  ?? "",
-                        Lufs     = _partialLufs ?? 0,
+                        Bpm       = _partialBpm  ?? 0,
+                        Key       = _partialKey  ?? "",
+                        Lufs      = _partialLufs ?? 0,
                         FromCache = false
                     }));
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
@@ -109,13 +93,13 @@ public class AnalysisService
                 FirePartialUpdate(null, null, t.Result);
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
-            await Task.WhenAll(bpmTask, keyTask, lufsTask);
+            await Task.WhenAll(oracleTask, lufsTask);
 
             if (ct.IsCancellationRequested) return;
 
-            Log($"[Analysis] All tasks done — BPM={bpmTask.Result}, Key={keyTask.Result}, LUFS={lufsTask.Result}");
+            Log($"[Analysis] All tasks done — BPM={oracleTask.Result.Bpm}, Key={oracleTask.Result.Key}, LUFS={lufsTask.Result}");
             _db.SaveAnalysis(filePath, fingerprint,
-                bpmTask.Result, keyTask.Result, lufsTask.Result);
+                oracleTask.Result.Bpm, oracleTask.Result.Key, lufsTask.Result);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)

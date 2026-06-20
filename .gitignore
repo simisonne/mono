@@ -27,3 +27,6 @@ desktop.ini
 .DS_Store
 bass24/
 test/
+
+# Benchmark data
+benchmark/

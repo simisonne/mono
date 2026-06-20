@@ -17,7 +17,6 @@
         <SolidColorBrush x:Key="WaveformPlayed" Color="#7c3aed"/>
         <SolidColorBrush x:Key="Needle" Color="#1c1c1c"/>
 
-        <conv:PositionToOffsetConverter x:Key="PositionToOffsetConverter"/>
         <conv:ItemIndexConverter x:Key="ItemIndexConverter"/>
         <conv:TitleDisplayConverter x:Key="TitleDisplayConverter"/>
         <conv:SampleRateConverter x:Key="SampleRateConverter"/>

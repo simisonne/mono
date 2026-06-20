@@ -17,6 +17,7 @@ public partial class MainWindow : Window
 
     private bool _isMuted = false;
     private double _volumeBeforeMute = 1.0;
+    private bool _volumeInitialized = false;
 
     private const int WM_SIZING = 0x0214;
     private const int WMSZ_TOP = 3;
@@ -42,6 +43,13 @@ public partial class MainWindow : Window
             VolumeSlider.Value = vol;
             App.ViewModel.SetVolume(vol);
         }
+        else
+        {
+            VolumeSlider.Value = 0.5;
+            App.ViewModel.SetVolume(0.5);
+            App.ViewModel.Db.SaveSetting("volume", "0.5");
+        }
+        _volumeInitialized = true;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -167,7 +175,7 @@ public partial class MainWindow : Window
             _isMuted = false;
         }
 
-        if (!_isMuted || value > 0)
+        if (_volumeInitialized && (!_isMuted || value > 0))
             App.ViewModel?.Db.SaveSetting("volume",
                 value.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }

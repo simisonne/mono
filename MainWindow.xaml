@@ -4,7 +4,7 @@
         xmlns:conv="clr-namespace:mono.Converters"
         xmlns:views="clr-namespace:mono.Views"
         xmlns:iconPacks="clr-namespace:MahApps.Metro.IconPacks;assembly=MahApps.Metro.IconPacks.Lucide"
-        Title="mono" Width="440" MinWidth="330"
+        Title="mono" Width="440" MinWidth="410"
         SizeToContent="Height"
         WindowStyle="None" AllowsTransparency="False"
         Background="{StaticResource Background}"
@@ -404,7 +404,7 @@
                                 PreviewMouseLeftButtonDown="VolumeSlider_PreviewMouseDown">
                             <Slider x:Name="VolumeSlider"
                                     Width="64"
-                                    Minimum="0" Maximum="1" Value="1"
+                                    Minimum="0" Maximum="1" Value="0.5"
                                     Style="{StaticResource FlatSlider}"
                                     VerticalAlignment="Center"
                                     ValueChanged="VolumeSlider_ValueChanged"/>

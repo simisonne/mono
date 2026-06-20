@@ -188,9 +188,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void TogglePlayPause()
     {
         if (_audio.IsPlaying)
+        {
             _audio.Pause();
+        }
         else
+        {
+            if (_audio.IsTrackFinished())
+                _audio.Seek(0.0);
             _audio.Play();
+        }
         IsPlaying = _audio.IsPlaying;
     }
 

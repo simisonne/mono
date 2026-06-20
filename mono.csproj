@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,6 +8,12 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\Icons\mono.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="benchmark\**" />
+    <None Remove="benchmark\**" />
+    <Content Remove="benchmark\**" />
+  </ItemGroup>
 
   <Target Name="ClearCache" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <Delete Files="$(APPDATA)\mono\library.db" ContinueOnError="true" />
@@ -35,20 +41,13 @@
     <None Include="Assets\Binaries\fpcalc.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Assets\Scripts\analyze.py">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Assets\Binaries\key\**\*" CopyToOutputDirectory="PreserveNewest">
+      <Link>Assets\Binaries\key\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </None>
-    <None Include="Assets\Scripts\analyze_bpm.py">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Assets\Scripts\analyze_key.py">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Assets\Scripts\setup_venv.bat">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Remove="Assets\Scripts\venv\**" />
-    <Content Remove="Assets\Scripts\venv\**" />
   </ItemGroup>
 
   <ItemGroup>
