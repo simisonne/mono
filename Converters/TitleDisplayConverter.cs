@@ -9,7 +9,7 @@ public sealed class TitleDisplayConverter : IMultiValueConverter
     {
         if (values.Length >= 2 && values[0] is string artist && values[1] is string title)
         {
-            return string.IsNullOrWhiteSpace(artist) ? title : $"{artist} — {title}";
+            return string.IsNullOrWhiteSpace(artist) ? title : $"{artist} - {title}";
         }
         return string.Empty;
     }

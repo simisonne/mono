@@ -118,12 +118,13 @@
             <Grid Grid.Row="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="28"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="80"/>
                     <RowDefinition Height="56"/>
                     <RowDefinition Height="44"/>
                 </Grid.RowDefinitions>
 
-                <!-- ROW A — Title bar -->
+                <!-- ROW A - Title bar -->
                 <Border Grid.Row="0" Background="{StaticResource Surface}"
                         BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1"
                         MouseLeftButtonDown="Border_MouseLeftButtonDown">
@@ -233,8 +234,156 @@
                     </Grid>
                 </Border>
 
-                <!-- ROW B — Track info + cover art -->
-                <Grid Grid.Row="1" Background="{StaticResource Surface}">
+                <!-- ROW A.5 - Dependency banner (click-to-install / progress / success) -->
+                <!-- Single combined row. Click anywhere on the content to
+                     install; the X cancels an in-flight download or dismisses. -->
+                <Border x:Name="DependencyNoticeBorder"
+                        Grid.Row="1"
+                        BorderThickness="0,0,0,1"
+                        Visibility="{Binding DependencyNoticeVisibility}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="#FFF7ED"/>
+                            <Setter Property="BorderBrush" Value="#F59E0B"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding BannerState}" Value="Success">
+                                    <Setter Property="Background" Value="#ECFDF5"/>
+                                    <Setter Property="BorderBrush" Value="#10B981"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Content: clickable notice (Missing/Success). Whole
+                             area is the install trigger; disabled by CanExecute
+                             while installing, after success, or when QA-suppressed. -->
+                        <Button Grid.Column="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                Cursor="Hand"
+                                Command="{Binding InstallDependenciesCommand}"
+                                ToolTip="Install missing dependencies">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BannerState}" Value="Installing">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="Transparent">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <TextBlock FontFamily="{StaticResource FontInter}"
+                                       FontSize="11"
+                                       Text="{Binding DependencyNotice}"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="8,3,28,3">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#92400E"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BannerState}" Value="Success">
+                                                <Setter Property="Foreground" Value="#065F46"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+
+                        <!-- Content: progress (Installing). Single bar reused
+                             across deps; InstallLabel says which file + "(n of n)". -->
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="12,3,28,3">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BannerState}" Value="Installing">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock FontFamily="{StaticResource FontInter}"
+                                       FontSize="11"
+                                       Foreground="#92400E"
+                                       VerticalAlignment="Center"
+                                        Text="{Binding InstallLabel, Mode=OneWay}"
+                                        Margin="0,0,8,0"/>
+                            <ProgressBar Width="160" Height="10"
+                                         Minimum="0" Maximum="100"
+                                         Foreground="#B45309"
+                                         Value="{Binding InstallProgress, Mode=OneWay}"/>
+                        </StackPanel>
+
+                        <!-- X: cancel during install, dismiss otherwise. Sibling
+                             (not nested) to the install button - separate column. -->
+                        <Button Grid.Column="1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Width="20" Height="20"
+                                Margin="0,0,2,0"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                Cursor="Hand"
+                                Command="{Binding DependencyXCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Foreground" Value="#B45309"/>
+                                    <Setter Property="ToolTip" Value="Dismiss"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BannerState}" Value="Installing">
+                                            <Setter Property="ToolTip" Value="Cancel download"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding BannerState}" Value="Success">
+                                            <Setter Property="Foreground" Value="#047857"/>
+                                        </DataTrigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Foreground" Value="#7C3AED"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="Transparent">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <iconPacks:PackIconLucide Kind="X" Width="11" Height="11"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- ROW B - Track info + cover art -->
+                <Grid Grid.Row="2" Background="{StaticResource Surface}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -302,14 +451,14 @@
                            Visibility="{Binding CoverArtVisibility}"/>
                 </Grid>
 
-                <!-- ROW C — Waveform -->
-                <Border Grid.Row="2" Background="{StaticResource SurfaceAlt}"
+                <!-- ROW C - Waveform -->
+                <Border Grid.Row="3" Background="{StaticResource SurfaceAlt}"
                         BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,1">
                     <views:WaveformView DataContext="{Binding WaveformVM}"/>
                 </Border>
 
-                <!-- ROW D — Transport controls -->
-                <Border Grid.Row="3" Background="{StaticResource Background}">
+                <!-- ROW D - Transport controls -->
+                <Border Grid.Row="4" Background="{StaticResource Background}">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="{Binding PositionDisplay}"
                                    FontFamily="Consolas" FontSize="11"

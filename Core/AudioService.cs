@@ -57,7 +57,7 @@ public sealed class AudioService : IDisposable
         Log($"Load called: {path}");
         if (!_initialized)
         {
-            Log("Load aborted — not initialized");
+            Log("Load aborted - not initialized");
             return false;
         }
         if (_handle != 0)
@@ -85,7 +85,7 @@ public sealed class AudioService : IDisposable
 
     public void Play()
     {
-        Log($"Play called — handle: {_handle}, initialized: {_initialized}");
+        Log($"Play called - handle: {_handle}, initialized: {_initialized}");
         if (_handle == 0 || !_initialized) return;
         bool result = Bass.ChannelPlay(_handle);
         Log($"ChannelPlay result: {result}, Error: {Bass.LastError}");

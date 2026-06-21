@@ -112,7 +112,7 @@
                             <TextBlock.Text>
                                 <MultiBinding StringFormat="{}{0}{1}{2}">
                                     <Binding Path="Artist"/>
-                                    <Binding Source=" — "/>
+                                    <Binding Source=" - "/>
                                     <Binding Path="Title"/>
                                 </MultiBinding>
                             </TextBlock.Text>

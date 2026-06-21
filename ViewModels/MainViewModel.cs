@@ -7,10 +7,17 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using mono.Core;
 using mono.Models;
 
 namespace mono.ViewModels;
+
+// Backs the single combined dependency banner row. Hidden = no banner.
+// Missing = amber "click to install" (disabled when QA-suppressed).
+// Installing = progress bar + per-dep label; the row's X means cancel.
+// Success = green confirmation, auto-dismissed after a few seconds.
+public enum DependencyBannerState { Hidden, Missing, Installing, Success }
 
 public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 {
@@ -66,6 +73,56 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public string AnalysisBadge { get; private set; } = "";
 
+    // --- Dependency banner (Feature 2: explicit click-to-install) ----------
+    // The banner is a single combined row whose look is derived from
+    // BannerState (Hidden/Missing/Installing/Success) via XAML DataTriggers.
+    // Cancel-mid-sequence and partial success are NOT a separate state: they
+    // collapse back into Missing (recomputed by BuildMissingDependencyNotice,
+    // the same source of truth used since Feature 1).
+    private DependencyBannerState _bannerState = DependencyBannerState.Hidden;
+    private bool _bannerDismissed;              // session-scoped hide of Missing
+    private bool _installing;                   // sole double-click guard
+    private int _installProgress;
+    private string _installLabel = "";
+    private CancellationTokenSource? _installCts;
+    private DispatcherTimer? _successTimer;
+
+    public DependencyBannerState BannerState
+    {
+        get => _bannerState;
+        private set
+        {
+            if (_bannerState == value) return;
+            _bannerState = value;
+            OnPropertyChanged(nameof(BannerState));
+            OnPropertyChanged(nameof(DependencyNoticeVisibility));
+            // Re-evaluate the install command's CanExecute (enabled only in
+            // Missing + installable + not-installing).
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public string DependencyNotice { get; private set; } = "";
+
+    // Bound directly (no converter) like CoverArtVisibility. Collapsed when
+    // Hidden (covers both "everything present" and "user dismissed Missing").
+    public Visibility DependencyNoticeVisibility =>
+        BannerState == DependencyBannerState.Hidden
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+    public int InstallProgress
+    {
+        get => _installProgress;
+        private set { _installProgress = value; OnPropertyChanged(); }
+    }
+
+    public string InstallLabel
+    {
+        get => _installLabel;
+        private set { _installLabel = value; OnPropertyChanged(); }
+    }
+
     public ImageSource? CoverArtSource { get; private set; }
 
     public Visibility CoverArtVisibility => CoverArtSource != null
@@ -80,6 +137,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public ICommand ClearQueueCommand { get; }
     public ICommand RemoveTrackCommand { get; }
     public ICommand ShowInFolderCommand { get; }
+    public ICommand InstallDependenciesCommand { get; }
+    public ICommand DependencyXCommand { get; }
 
     public MainViewModel()
     {
@@ -112,6 +171,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         ClearQueueCommand = new RelayCommand(_ => ClearQueue());
         RemoveTrackCommand = new RelayCommand(p => RemoveTrack((TrackItem)p!));
         ShowInFolderCommand = new RelayCommand(p => ShowInFolder((TrackItem)p!));
+        // Click-to-install: enabled only in the Missing state, when the
+        // service confirms something is installable, and never during an
+        // in-flight install (the sole double-click guard).
+        InstallDependenciesCommand = new RelayCommand(
+            p => { _ = ExecuteInstallAsync(); },
+            () => BannerState == DependencyBannerState.Missing
+                  && DependencyCheckService.CanInstallMissing
+                  && !_installing);
+        // The row's X: cancels an in-flight download, otherwise dismisses the
+        // banner for the session (Missing) or clears it (Success).
+        DependencyXCommand = new RelayCommand(_ => ExecuteDependencyX());
     }
 
     public void OpenSingleFile(string path)
@@ -380,6 +450,130 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         OnPropertyChanged(nameof(AnalysisBadge));
     }
 
+    // Recompute the banner from the service's current availability. Called at
+    // startup and on every AvailabilityChanged. It never fights an active
+    // install (the install drives its own Installing->Success/Missing
+    // transition) and never force-hides a Success that's still on screen
+    // (its auto-dismiss timer / the X handle that).
+    public void RefreshDependencyBanner()
+    {
+        if (BannerState == DependencyBannerState.Installing) return;
+
+        string? notice = DependencyCheckService.BuildMissingDependencyNotice();
+
+        if (string.IsNullOrEmpty(notice))
+        {
+            if (BannerState != DependencyBannerState.Success)
+                BannerState = DependencyBannerState.Hidden;
+            return;
+        }
+
+        // A previously-dismissed Missing notice stays hidden for the session.
+        if (_bannerDismissed)
+        {
+            BannerState = DependencyBannerState.Hidden;
+            return;
+        }
+
+        DependencyNotice = notice;
+        OnPropertyChanged(nameof(DependencyNotice));
+        BannerState = DependencyBannerState.Missing;
+    }
+
+    // User clicked the banner: install whatever is missing, sequentially,
+    // behind one shared progress bar. _installing is reset in finally on
+    // EVERY exit path (success, download-failure, cancel) so the row can
+    // never get stuck disabled.
+    private async Task ExecuteInstallAsync()
+    {
+        if (_installing) return;
+        _installing = true;
+        BannerState = DependencyBannerState.Installing;
+        CommandManager.InvalidateRequerySuggested();
+
+        _installCts?.Dispose();
+        _installCts = new CancellationTokenSource();
+
+        var progress = new Progress<InstallProgressUpdate>(OnInstallProgress);
+
+        bool allSucceeded;
+        try
+        {
+            allSucceeded = await DependencyCheckService.InstallMissingDepsAsync(
+                progress, _installCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            allSucceeded = false; // user cancel -> revert to Missing (not an error)
+        }
+        finally
+        {
+            _installing = false;
+            _installCts?.Dispose();
+            _installCts = null;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        // Full success only if the run succeeded end-to-end AND nothing is
+        // still missing (a QA-suppressed dep would keep the notice non-null,
+        // so we don't claim success in that case).
+        if (allSucceeded
+            && DependencyCheckService.BuildMissingDependencyNotice() == null)
+        {
+            ShowSuccess();
+        }
+        else
+        {
+            // Partial / failure / cancel -> recompute the missing state. A dep
+            // that finished before the stop has already flipped via
+            // AvailabilityChanged, so the notice lists only what's still gone.
+            RefreshDependencyBanner();
+        }
+    }
+
+    private void OnInstallProgress(InstallProgressUpdate update)
+    {
+        InstallLabel = update.Label;
+        InstallProgress = update.Percent;
+    }
+
+    private void ShowSuccess()
+    {
+        DependencyNotice = "Dependencies installed successfully.";
+        OnPropertyChanged(nameof(DependencyNotice));
+        BannerState = DependencyBannerState.Success;
+
+        _successTimer?.Stop();
+        _successTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _successTimer.Tick += (_, _) =>
+        {
+            _successTimer?.Stop();
+            _successTimer = null;
+            if (BannerState == DependencyBannerState.Success)
+                BannerState = DependencyBannerState.Hidden;
+        };
+        _successTimer.Start();
+    }
+
+    private void ExecuteDependencyX()
+    {
+        if (BannerState == DependencyBannerState.Installing)
+        {
+            // Real cancel: aborts the in-flight HttpClient request (the token
+            // is honored inside the read/write loop), the partial .tmp is
+            // deleted by the download's finally, and the banner reverts to
+            // Missing via ExecuteInstallAsync's catch/finally path.
+            _installCts?.Cancel();
+            return;
+        }
+
+        _successTimer?.Stop();
+        _successTimer = null;
+        if (BannerState == DependencyBannerState.Missing)
+            _bannerDismissed = true; // hide for the session
+        BannerState = DependencyBannerState.Hidden;
+    }
+
     public void Dispose()
     {
         _audio.Dispose();
@@ -389,13 +583,21 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private sealed class RelayCommand : ICommand
     {
         private readonly Action<object?> _execute;
+        private readonly Func<bool>? _canExecute;
+
         public event EventHandler? CanExecuteChanged
         {
             add    { CommandManager.RequerySuggested += value; }
             remove { CommandManager.RequerySuggested -= value; }
         }
-        public RelayCommand(Action<object?> execute) => _execute = execute;
-        public bool CanExecute(object? parameter) => true;
+
+        public RelayCommand(Action<object?> execute, Func<bool>? canExecute = null)
+        {
+            _execute = execute;
+            _canExecute = canExecute;
+        }
+
+        public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
         public void Execute(object? parameter) => _execute(parameter);
     }
 }

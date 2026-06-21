@@ -35,7 +35,7 @@ public partial class App : Application
     {
         DispatcherUnhandledException += (s, args) =>
         {
-            MessageBox.Show(args.Exception.ToString(), "mono — fatal error",
+            MessageBox.Show(args.Exception.ToString(), "mono - fatal error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
@@ -66,8 +66,45 @@ public partial class App : Application
 
         _ = Task.Run(StartPipeServer);
 
+        // Dev/QA-only flags: force a dependency to report "missing" so the
+        // unavailable-path UI/logging can be exercised without uninstalling
+        // anything. Only honored by the first (mutex-owning) instance.
+        bool forceNoNode = HasFlag(e.Args, "--no-node");
+        bool forceNoFfmpeg = HasFlag(e.Args, "--no-ffmpeg");
+        // fake-missing variants: report missing but KEEP install enabled, so
+        // the click-to-install flow can be QA-tested without uninstalling.
+        bool fakeMissingNode = HasFlag(e.Args, "--fake-missing-node");
+        bool fakeMissingFfmpeg = HasFlag(e.Args, "--fake-missing-ffmpeg");
+
+        // Probe node/ffmpeg once per session, off the UI thread. Result is
+        // cached in memory for the process lifetime (never persisted). When a
+        // dependency is missing, a single dismissible banner is surfaced and
+        // the user clicks it to install (downloads are no longer auto-fired
+        // at startup). Subscribe BEFORE the probe runs so an AvailabilityChanged
+        // from a completed install can't arrive before the handler is attached.
+        DependencyCheckService.AvailabilityChanged += OnDependencyAvailabilityChanged;
+        _ = Task.Run(async () =>
+        {
+            await DependencyCheckService.InitializeAsync(forceNoNode, forceNoFfmpeg, fakeMissingNode, fakeMissingFfmpeg);
+            Application.Current?.Dispatcher.InvokeAsync(
+                () => ViewModel.RefreshDependencyBanner());
+        });
+
         if (e.Args.Length > 0 && File.Exists(e.Args[0]))
             ViewModel.OpenSingleFile(e.Args[0]);
+    }
+
+    private static bool HasFlag(string[] args, string flag) =>
+        Array.Exists(args, a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+
+    // Invoked (off the UI thread) when an on-demand install flips a
+    // previously-missing dependency to available mid-session. Recompute the
+    // banner on the dispatcher; RefreshDependencyBanner is a no-op while an
+    // install is in progress (the install owns its own state transitions).
+    private static void OnDependencyAvailabilityChanged()
+    {
+        Application.Current?.Dispatcher.InvokeAsync(
+            () => ViewModel.RefreshDependencyBanner());
     }
 
     private static void TrySendToExistingInstance(string? filePath)

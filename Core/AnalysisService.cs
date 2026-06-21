@@ -16,8 +16,18 @@ public class AnalysisService
     private string? _partialKey;
     private double? _partialLufs;
 
-    private static readonly string LogPath = Path.Combine(
-        @"C:\Users\Maild\Documents\Coding\mono media player\test", "mono_debug.log");
+    private bool _loggedNodeUnavailable;
+    private bool _loggedFfmpegUnavailable;
+
+    private static readonly string LogPath;
+
+    static AnalysisService()
+    {
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string dir = Path.Combine(appData, "mono");
+        Directory.CreateDirectory(dir);
+        LogPath = Path.Combine(dir, "mono_debug.log");
+    }
 
     private static void Log(string msg) =>
         File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
@@ -63,14 +73,37 @@ public class AnalysisService
                 return;
             }
 
-            Log("[Analysis] No cache — launching BPM + Key + LUFS in parallel");
+            Log("[Analysis] No cache - launching BPM + Key + LUFS in parallel");
 
             _partialBpm = null;
             _partialKey = null;
             _partialLufs = null;
 
-            var oracleTask = NodeAnalysisService.GetAnalysisAsync(filePath, ct);
-            var lufsTask   = _lufs.MeasureLufsAsync(filePath, ct);
+            bool nodeAvailable = DependencyCheckService.IsNodeAvailable;
+            bool ffmpegAvailable = DependencyCheckService.IsFfmpegAvailable;
+
+            if (!nodeAvailable && !_loggedNodeUnavailable)
+            {
+                Log("[Analysis] Node.js unavailable - BPM/Key disabled for this session (see [DepCheck])");
+                _loggedNodeUnavailable = true;
+            }
+            if (!ffmpegAvailable && !_loggedFfmpegUnavailable)
+            {
+                Log("[Analysis] ffmpeg unavailable - LUFS disabled for this session (see [DepCheck])");
+                _loggedFfmpegUnavailable = true;
+            }
+
+            // Skip the process spawn entirely when a dependency is missing;
+            // substitute an already-completed empty result so the existing
+            // partial-update / WhenAll flow is unchanged. Cache logic is left
+            // exactly as-is - a track with no usable result retries next play.
+            var oracleTask = nodeAvailable
+                ? NodeAnalysisService.GetAnalysisAsync(filePath, ct)
+                : Task.FromResult(new NodeAnalysisResult(0, string.Empty));
+
+            var lufsTask = ffmpegAvailable
+                ? _lufs.MeasureLufsAsync(filePath, ct)
+                : Task.FromResult(0.0);
 
             _ = oracleTask.ContinueWith(t =>
             {
@@ -97,9 +130,14 @@ public class AnalysisService
 
             if (ct.IsCancellationRequested) return;
 
-            Log($"[Analysis] All tasks done — BPM={oracleTask.Result.Bpm}, Key={oracleTask.Result.Key}, LUFS={lufsTask.Result}");
-            _db.SaveAnalysis(filePath, fingerprint,
-                oracleTask.Result.Bpm, oracleTask.Result.Key, lufsTask.Result);
+            Log($"[Analysis] All tasks done - BPM={oracleTask.Result.Bpm}, Key={oracleTask.Result.Key}, LUFS={lufsTask.Result}");
+
+            // Persist only when BPM/Key was actually produced (node available);
+            // this mirrors the pre-change behaviour where a node failure threw
+            // before reaching SaveAnalysis, leaving the track to retry.
+            if (nodeAvailable)
+                _db.SaveAnalysis(filePath, fingerprint,
+                    oracleTask.Result.Bpm, oracleTask.Result.Key, lufsTask.Result);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)

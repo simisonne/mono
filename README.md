@@ -8,15 +8,15 @@ Lightweight WPF audio player for music producers. Displays a real-time waveform 
 
 ## Features
 
-- **Waveform display** — 1800-peak resolution, rendered via SkiaSharp; click anywhere to seek
-- **Automatic analysis** — BPM (essentia), musical key (essentia), and LUFS (ffmpeg ebur128) run in parallel with incremental results
-- **Playlist** — drag-to-reorder, context menu (play / remove / show in folder), seamless auto-advance
-- **Cover art** — embedded artwork extracted from tags via TagLibSharp; layout adapts when no art is present
-- **Persistent cache** — acoustic fingerprint deduplication (Chromaprint) with SQLite storage; analysis results, play counts, and volume persist across sessions and survive file moves
-- **Single-instance** — named Mutex + named pipe IPC; a second launch forwards its file path to the running instance and activates the window
-- **Drag-and-drop** — drop files onto the window to add them to the playlist
-- **Supported formats** — MP3, WAV, FLAC, M4A
-- **Borderless chrome** — custom title bar, fixed-height layout, minimalist design
+- **Waveform display** - 1800-peak resolution, rendered via SkiaSharp; click anywhere to seek
+- **Automatic analysis** - BPM (essentia), musical key (essentia), and LUFS (ffmpeg ebur128) run in parallel with incremental results
+- **Playlist** - drag-to-reorder, context menu (play / remove / show in folder), seamless auto-advance
+- **Cover art** - embedded artwork extracted from tags via TagLibSharp; layout adapts when no art is present
+- **Persistent cache** - acoustic fingerprint deduplication (Chromaprint) with SQLite storage; analysis results, play counts, and volume persist across sessions and survive file moves
+- **Single-instance** - named Mutex + named pipe IPC; a second launch forwards its file path to the running instance and activates the window
+- **Drag-and-drop** - drop files onto the window to add them to the playlist
+- **Supported formats** - MP3, WAV, FLAC, M4A
+- **Borderless chrome** - custom title bar, fixed-height layout, minimalist design
 
 ---
 
@@ -29,8 +29,8 @@ Extract the zip and run `mono.exe`. No installer required.
 ### Requirements
 
 - Windows 10/11 x64
-- [ffmpeg](https://ffmpeg.org/download.html) on system PATH — required for LUFS loudness analysis
-- [Node.js](https://nodejs.org/) (v18+) on system PATH — required for BPM and musical key analysis
+
+No external dependencies required. `ffmpeg` and `Node.js` are auto-detected at startup; if either is missing, a banner offers one-click install (downloaded on demand to `%AppData%\mono\bin`). Alternatively, you can install them yourself on PATH ([ffmpeg](https://ffmpeg.org/download.html), [Node.js](https://nodejs.org/) v18+).
 
 ---
 
@@ -85,10 +85,10 @@ MVVM three-tier layout:
 Views            MainWindow.xaml, WaveformView.xaml, PlaylistDock.xaml
 ViewModels       MainViewModel, WaveformViewModel
 Services         AudioService, WaveformService, AnalysisService,
-                 LufsService, FingerprintService,
+                 LufsService, FingerprintService, DependencyCheckService,
                  LibraryDb, PlaylistQueue, FileIconRegistryService
 Models           TrackItem
-Database         SQLite — %APPDATA%\mono\library.db
+Database         SQLite - %APPDATA%\mono\library.db
 ```
 
 Single-instance enforcement via `Mutex` (`mono_single_instance_9f3a`) and named pipe IPC (`mono_ipc_9f3a`). A second instance forwards its file path to the primary instance and exits. The primary instance restores its window from minimized state and brings it to the foreground.
@@ -101,22 +101,23 @@ Analysis results are keyed by acoustic fingerprint, not file path, so cached dat
 <summary>Project structure</summary>
 
 ```
-App.xaml.cs                   Entry point — single-instance IPC, file-arg handling
-MainWindow.xaml(.cs)          Borderless shell — title bar, track info, waveform row,
+App.xaml.cs                   Entry point - single-instance IPC, file-arg handling
+MainWindow.xaml(.cs)          Borderless shell - title bar, track info, waveform row,
                               transport controls, playlist dock
 Views/
   WaveformView.xaml(.cs)      SkiaSharp waveform canvas with click-to-seek
   PlaylistDock.xaml(.cs)      ListView playlist with drag-reorder adorner
 ViewModels/
-  MainViewModel.cs            Central state — playback, queue, analysis, cover art
+  MainViewModel.cs            Central state - playback, queue, analysis, cover art
   WaveformViewModel.cs        Peak data, position tracking, seek commands
 Core/
   AudioService.cs             ManagedBass playback engine
   WaveformService.cs          Decode-stream peak extraction (1800 buckets)
   AnalysisService.cs          Orchestrates BPM + key + LUFS in parallel
+  DependencyCheckService.cs   Session-scoped node/ffmpeg availability probe + cache
   LufsService.cs              ffmpeg ebur128 wrapper
   FingerprintService.cs       Chromaprint fpcalc wrapper
-  LibraryDb.cs                SQLite persistence (Dapper) — schema migration,
+  LibraryDb.cs                SQLite persistence (Dapper) - schema migration,
                               fingerprint-based cache, play counts, settings
   PlaylistQueue.cs            ObservableCollection playlist state machine
   FileIconRegistryService.cs  HKCU file-icon registration (one-time)
@@ -142,5 +143,23 @@ TagLibSharp                    2.3.0
 SkiaSharp.Views.WPF            3.119.2
 MahApps.Metro.IconPacks.Lucide 6.2.1
 ```
+
+</details>
+
+<details>
+<summary>Development &amp; QA flags (CLI)</summary>
+
+At startup, mono probes `node` and `ffmpeg` once and caches the result in memory for the whole session. If a dependency is missing, the corresponding analysis (BPM/Key for Node.js, LUFS for ffmpeg) is skipped for the rest of the session instead of failing on every track, and a single dismissible notice is shown. The probe is logged to `%APPDATA%\mono\mono_debug.log` under the `[DepCheck]` tag.
+
+| Flag | Effect |
+|---|---|
+| `--no-node` | Force Node.js to report missing (disables BPM/Key, shows the notice). **Dev/QA only.** |
+| `--no-ffmpeg` | Force ffmpeg to report missing (disables LUFS, shows the notice). **Dev/QA only.** |
+| `--fake-missing-node` | Report Node.js missing but **keep install enabled** (banner says "Click to install"). **Dev/QA only.** |
+| `--fake-missing-ffmpeg` | Report ffmpeg missing but **keep install enabled** (banner says "Click to install"). **Dev/QA only.** |
+
+Notes:
+- These flags are honored only by the first (mutex-owning) instance, i.e. a fresh launch. A second launch forwards only its file-path argument to the running instance and exits.
+- Pass both to simulate a fully missing-dependency session. The flags are intentionally undocumented in the user-facing sections.
 
 </details>

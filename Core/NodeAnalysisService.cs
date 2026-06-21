@@ -11,7 +11,6 @@ internal record NodeAnalysisResult(double Bpm, string Key);
 
 internal static class NodeAnalysisService
 {
-    private const string NodeExe = "node";
     private static readonly string ScriptPath =
         Path.Combine(AppContext.BaseDirectory, "Assets", "Binaries", "key", "oracle.js");
 
@@ -35,7 +34,7 @@ internal static class NodeAnalysisService
 
         var psi = new ProcessStartInfo
         {
-            FileName               = NodeExe,
+            FileName               = DependencyCheckService.NodeExe,
             Arguments              = $"\"{ScriptPath}\" \"{audioPath}\"",
             UseShellExecute        = false,
             RedirectStandardOutput = true,
@@ -59,7 +58,7 @@ internal static class NodeAnalysisService
         }
         catch (OperationCanceledException)
         {
-            Log("Cancelled — killing oracle process");
+            Log("Cancelled - killing oracle process");
             try { proc.Kill(entireProcessTree: true); } catch { }
             throw;
         }
@@ -83,7 +82,7 @@ internal static class NodeAnalysisService
 
         if (bpm > 0 && bpm <= 84) bpm *= 2;
 
-        Log($"Parsed — BPM={bpm}, Key={key}");
+        Log($"Parsed - BPM={bpm}, Key={key}");
         return new NodeAnalysisResult(bpm, key);
     }
 }
