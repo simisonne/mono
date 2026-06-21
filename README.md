@@ -29,8 +29,8 @@ Extract the zip and run `mono.exe`. No installer required.
 ### Requirements
 
 - Windows 10/11 x64
-
-No external dependencies required. `ffmpeg` and `Node.js` are auto-detected at startup; if either is missing, a banner offers one-click install (downloaded on demand to `%AppData%\mono\bin`). Alternatively, you can install them yourself on PATH ([ffmpeg](https://ffmpeg.org/download.html), [Node.js](https://nodejs.org/) v18+).
+- [ffmpeg](https://ffmpeg.org/download.html) on system PATH - required for LUFS loudness analysis
+- [Node.js](https://nodejs.org/) (v18+) on system PATH - required for BPM and musical key analysis
 
 ---
 
