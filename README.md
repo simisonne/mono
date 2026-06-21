@@ -30,6 +30,7 @@ Extract the zip and run `mono.exe`. No installer required.
 
 - Windows 10/11 x64
 - [ffmpeg](https://ffmpeg.org/download.html) on system PATH — required for LUFS loudness analysis
+- [Node.js](https://nodejs.org/) (v18+) on system PATH — required for BPM and musical key analysis
 
 ---
 
