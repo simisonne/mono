@@ -6,8 +6,15 @@ namespace mono.Core;
 
 public sealed class AudioService : IDisposable
 {
-    private static readonly string LogPath = Path.Combine(
-        @"C:\Users\Maild\Documents\Coding\mono media player\test", "mono_debug.log");
+    private static readonly string LogPath;
+
+    static AudioService()
+    {
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string dir = Path.Combine(appData, "mono");
+        Directory.CreateDirectory(dir);
+        LogPath = Path.Combine(dir, "mono_debug.log");
+    }
 
     private int _handle;
     private readonly DispatcherTimer _timer;

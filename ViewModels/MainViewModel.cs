@@ -117,7 +117,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public void OpenSingleFile(string path)
     {
         string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
-        if (ext != ".mp3" && ext != ".wav" && ext != ".flac") return;
+        if (ext != ".mp3" && ext != ".wav" && ext != ".flac" && ext != ".m4a") return;
 
         var track = BuildTrackItem(path);
         if (track == null) return;
@@ -132,7 +132,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         if (!data.GetDataPresent(DataFormats.FileDrop)) return;
         string[] files = (string[])data.GetData(DataFormats.FileDrop);
-        string[] extensions = [".wav", ".mp3", ".flac"];
+        string[] extensions = [".wav", ".mp3", ".flac", ".m4a"];
 
         bool wasEmpty = _queue.Queue.Count == 0;
 
