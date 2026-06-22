@@ -9,6 +9,14 @@ internal static class DependencyCheckService
 {
     private const string Tag = "DepCheck";
 
+    // Grace window (ms) before re-probing a dep that came back missing on the
+    // first pass. Long enough to clear a Windows PATH-initialization race
+    // (probe subprocess spawning before the process PATH is fully resolved),
+    // short enough that a genuinely-missing dep doesn't delay the banner.
+    // NOT a persistent cache: each re-probe is a live check, so a dep
+    // uninstalled later - or freshly dropped by mono's installer - is detected.
+    private const int RecheckDelayMs = 1500;
+
     private static readonly string AppDataDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "mono");
@@ -90,11 +98,11 @@ internal static class DependencyCheckService
             // without uninstalling the real binary.
             (_nodeAvailable, _nodeExe) = (forceNoNode || fakeMissingNode)
                 ? (false, "node")
-                : await ProbeAsync("node", "-v", "node.exe");
+                : await ProbeWithRecheckAsync("node", "-v", "node.exe");
 
             (_ffmpegAvailable, _ffmpegExe) = (forceNoFfmpeg || fakeMissingFfmpeg)
                 ? (false, "ffmpeg")
-                : await ProbeAsync("ffmpeg", "-version", "ffmpeg.exe");
+                : await ProbeWithRecheckAsync("ffmpeg", "-version", "ffmpeg.exe");
 
             // Only the old forceNo* flags suppress install; fakeMissing* does not.
             _nodeForceSuppressed = forceNoNode;
@@ -235,6 +243,33 @@ internal static class DependencyCheckService
         if (nodeMissing)
             return "BPM/Key analysis unavailable - Node.js not found." + cta;
         return "LUFS analysis unavailable - ffmpeg not found." + cta;
+    }
+
+    // Runs the bin-first/PATH-fallback probe and, if it reports missing,
+    // waits a short grace window then re-probes the SAME dep once. Guards
+    // against a transient false-negative where the probe subprocess spawns
+    // before Windows has fully initialized PATH for this process. No
+    // persistent cache: every probe is a live check, so a dep uninstalled
+    // later (or freshly dropped by mono's installer) is detected correctly.
+    // Only the missing dep is retried; deps found on the first pass are not.
+    // Both probes must agree "missing" for the dep to be treated as genuinely
+    // missing; a miss->found flip is logged so transient PATH races are
+    // traceable in mono_debug.log.
+    private static async Task<(bool ok, string exe)> ProbeWithRecheckAsync(
+        string name, string versionArg, string localFileName)
+    {
+        var (ok, exe) = await ProbeAsync(name, versionArg, localFileName);
+        if (ok) return (ok, exe);
+
+        await Task.Delay(RecheckDelayMs);
+
+        var (ok2, exe2) = await ProbeAsync(name, versionArg, localFileName);
+        if (ok2)
+        {
+            Log($"{name} found on re-check \u2014 transient PATH miss on first probe");
+            return (ok2, exe2);
+        }
+        return (ok, exe);
     }
 
     // Probes a candidate (a local %AppData%/mono/bin copy if present, else the

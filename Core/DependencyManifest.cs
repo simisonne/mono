@@ -23,9 +23,7 @@ internal static class DependencyManifest
     // Asset ffmpeg-N-125119-g4bbb7d9b99-win64-lgpl.zip  (NOT -shared, NOT -gpl)
     // sha256 taken from the release's own checksums.sha256 asset.
     public const string FfmpegDownloadUrl =
-        "https://github.com/BtbN/FFmpeg-Builds/releases/download/" +
-        "autobuild-2026-06-19-23-17/" +
-        "ffmpeg-N-125119-g4bbb7d9b99-win64-lgpl.zip";
+        "https://github.com/simisonne/mono/releases/download/ffmpeg-mirror-v1/ffmpeg-N-125119-g4bbb7d9b99-win64-lgpl.zip";
     public const string FfmpegSha256 =
         "c696f0b89bcfaf8b9ae12f4530f11243167050d504ceeed4db6458a861b4e5c8";
     public const long FfmpegArchiveSizeBytes = 145_210_198;

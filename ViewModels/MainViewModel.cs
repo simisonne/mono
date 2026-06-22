@@ -497,6 +497,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         var progress = new Progress<InstallProgressUpdate>(OnInstallProgress);
 
         bool allSucceeded;
+        bool cancelled = false;
         try
         {
             allSucceeded = await DependencyCheckService.InstallMissingDepsAsync(
@@ -504,7 +505,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (OperationCanceledException)
         {
-            allSucceeded = false; // user cancel -> revert to Missing (not an error)
+            // Only a user cancel (the banner's X) escapes InstallMissingDepsAsync:
+            // the download's 15m timeout is swallowed inside and returns false.
+            // So this is an intentional abort, not a failure.
+            allSucceeded = false;
+            cancelled = true;
         }
         finally
         {
@@ -522,10 +527,24 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             ShowSuccess();
         }
+        else if (cancelled)
+        {
+            // User cancelled: not a failure, and not a re-show. The dep may
+            // still be genuinely missing, but the user chose not to install
+            // the managed copy this session, so hide the banner for the
+            // session (Hidden, not Missing) and don't nag. Next launch's
+            // startup probe runs fresh and re-shows it if still missing.
+            // Must NOT route through RefreshDependencyBanner(): it early-
+            // returns while BannerState == Installing (still the case here,
+            // since ExecuteDependencyX only cancels the CTS) - that
+            // short-circuit is exactly the stuck-state bug this fixes.
+            _bannerDismissed = true;
+            BannerState = DependencyBannerState.Hidden;
+        }
         else
         {
-            // Partial / failure / cancel -> recompute the missing state. A dep
-            // that finished before the stop has already flipped via
+            // Partial / failure -> recompute the missing state. A dep that
+            // finished before the stop has already flipped via
             // AvailabilityChanged, so the notice lists only what's still gone.
             RefreshDependencyBanner();
         }
